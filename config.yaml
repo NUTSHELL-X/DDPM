@@ -1,0 +1,37 @@
+# path to save model
+model_weights_path: "exp/model.pth"
+# path to save training params (total epochs, optimizer state)
+training_params_path: "exp/training_params.pt"
+# continue or not (nothing like rightnow means false, if you set it to 
+# anything means true (confusing mechanism maybe from configargparse))
+continues: 
+# folder to save images after each epoch
+generated_image_folder: "exp/generated"
+# folder to save images when testing
+generated_image_folder_test: "exp/generated_test"
+# dataset folder
+dataset_path: "/PublicData/Dataset/konachan_anime_faces"
+# how your images are organized, "image_folder" refers to torchvision.datasets.ImageFolder class which requires subfolders
+# as class, if images are directly placed under dataset_path, set dataset_type to ""
+dataset_type: ""
+# adding noise steps (T)
+num_steps: 1000
+epochs: 5
+# dtype 
+dtype: "float32"
+# height and width of image
+h: 128
+w: 128
+
+batch_size: 4
+# learning rate
+lr: 1e-4
+# 以下三个功能还没完成，随意填即可
+lr_decay: "True"
+lr_step_size: 20
+milestones: [50,100]
+gamma: 0.9
+# used device, set it to cpu if you don't have cuda environment
+device: "cuda"
+# used gpus, list like [0], [1], [1,3], [0,1,2,3] etc. 
+gpus: [0]
