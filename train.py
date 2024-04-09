@@ -39,7 +39,7 @@ print('using device {device}'.format(device=device))
 
 total_epochs = 0
 model = UNet(
-        T=1000, ch=128, ch_mult=[1, 2, 2, 2], attn=[1],
+        T=num_steps, ch=128, ch_mult=[1, 2, 2, 2], attn=[1],
         num_res_blocks=2, dropout=0.1)
 model=nn.DataParallel(model,device_ids=args.gpus)
 model.to(device)
@@ -67,7 +67,7 @@ def diffusion_loss_fn(model, x_0, alphas_bar_sqrt, one_minus_alphas_bar_sqrt, n_
     return loss
 
 
-def p_sample_loop(model, shape, n_steps, betas, one_minus_alphas_bar_sqrt, device):
+def p_sample_loop(model, shape, n_steps, betas, one_minus_alphas_bar_sqrt):
     cur_x = torch.randn(shape).to(device)
     x_seq = [cur_x]
     for i in reversed(range(n_steps)):
@@ -107,7 +107,6 @@ def train():
             optimizer.step()
         
         print("loss:",loss)
-        save_image_seq(images=images.detach().cpu(),save_folder="real",image_name_prefix="real_{}".format(total_epochs+i))
         with torch.no_grad():
             x_seq = p_sample_loop(model, images[0:1].shape, num_steps, betas, one_minus_alphas_bar_sqrt)
 

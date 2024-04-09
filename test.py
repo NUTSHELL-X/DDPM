@@ -9,7 +9,39 @@ from utils import save_image_seq,save_weights,save_training_params
 from options import config_parser
 from model import UNet
 
-def p_sample_loop(model, shape, n_steps, betas, one_minus_alphas_bar_sqrt, device):
+
+parser=config_parser()
+args=parser.parse_args()
+h=args.h
+w=args.w
+num_steps = args.num_steps
+betas = torch.linspace(-10, 10, num_steps)
+betas = torch.sigmoid(betas)*(2e-2 - 1e-4)+1e-4
+
+alphas = 1-betas
+alphas_prod = torch.cumprod(alphas, 0)
+alphas_prod_p = torch.cat([torch.tensor([1]).float(), alphas_prod[:-1]], 0)
+alphas_bar_sqrt = torch.sqrt(alphas_prod)
+one_minus_alphas_bar_log = torch.log(1-alphas_prod)
+one_minus_alphas_bar_sqrt = torch.sqrt(1-alphas_prod)
+
+print("alphas_bar_sqrt[-1]:",alphas_bar_sqrt[-1])
+assert alphas.shape == alphas_prod.shape == alphas_prod_p.shape == \
+    alphas_bar_sqrt.shape == one_minus_alphas_bar_log.shape == one_minus_alphas_bar_sqrt.shape
+
+if args.device == "cuda" and torch.cuda.is_available():
+    device = "cuda:" + str(args.gpus[0])
+else:
+    device = "cpu"
+
+model = UNet(
+        T=num_steps, ch=128, ch_mult=[1, 2, 2, 2], attn=[1],
+        num_res_blocks=2, dropout=0.1)
+model=nn.DataParallel(model,device_ids=args.gpus)
+# model.to(device)
+
+
+def p_sample_loop(model, shape, n_steps, betas, one_minus_alphas_bar_sqrt):
     cur_x = torch.randn(shape).to(device)
     x_seq = [cur_x]
     for i in reversed(range(n_steps)):
@@ -31,38 +63,22 @@ def p_sample(model, x, t, betas, one_minus_alphas_bar_sqrt):
 
     return (sample)
 
-parser=config_parser()
-args=parser.parse_args()
-h=args.h
-w=args.w
-betas = torch.linspace(-10, 10, args.num_steps)
-betas = torch.sigmoid(betas)*(2e-2 - 1e-4)+1e-4
-
-alphas = 1-betas
-alphas_prod = torch.cumprod(alphas, 0)
-alphas_prod_p = torch.cat([torch.tensor([1]).float(), alphas_prod[:-1]], 0)
-alphas_bar_sqrt = torch.sqrt(alphas_prod)
-one_minus_alphas_bar_log = torch.log(1-alphas_prod)
-one_minus_alphas_bar_sqrt = torch.sqrt(1-alphas_prod)
-
-print("alphas_bar_sqrt[-1]:",alphas_bar_sqrt[-1])
-assert alphas.shape == alphas_prod.shape == alphas_prod_p.shape == \
-    alphas_bar_sqrt.shape == one_minus_alphas_bar_log.shape == one_minus_alphas_bar_sqrt.shape
-
-if args.device == "cuda" and torch.cuda.is_available():
-    device = "cuda:" + str(args.gpus[0])
-else:
-    device = "cpu"
-
-model = UNet(
-        T=1000, ch=128, ch_mult=[1, 2, 2, 2], attn=[1],
-        num_res_blocks=2, dropout=0.1)
-model=nn.DataParallel(model,device_ids=args.gpus)
-model.to(device)
-model.eval()
-
 if __name__=="__main__":
     # load model weights
     model.module.load_state_dict(torch.load(args.model_weights_path))
     print("loaded weights from {}".format(args.model_weights_path))
-    
+    model.eval()
+
+    if not os.path.exists(args.generated_image_folder_test):
+        os.makedirs(args.generated_image_folder_test,exist_ok=True)
+
+    interval = 20
+    img_num = 10
+    assert num_steps >= interval
+
+    for i in range(img_num):
+        with torch.no_grad():
+            x_seq = p_sample_loop(model, (1,3,h,w), num_steps, betas, one_minus_alphas_bar_sqrt)
+        for step in range(1, num_steps//interval):
+            cur_x = x_seq[step*20].detach().cpu()
+            save_image(cur_x,os.path.join(args.generated_image_folder_test,f'generated_img_{i}_{step}.jpg'))
