@@ -8,6 +8,7 @@ from dataset import create_dataloader
 from utils import save_image_seq,save_weights,save_training_params
 from options import config_parser
 from model import UNet
+from torch.optim.lr_scheduler import MultiStepLR
 
 parser=config_parser()
 args=parser.parse_args()
@@ -16,9 +17,9 @@ w=args.w
 dataloader=create_dataloader((h,w),args.batch_size,args.dataset_type)
 num_steps = args.num_steps
 
-betas = torch.linspace(-10, 10, num_steps)
-betas = torch.sigmoid(betas)*(2e-2 - 1e-4)+1e-4
-
+# betas = torch.linspace(-10, 10, num_steps)
+# betas = torch.sigmoid(betas)*(2e-2 - 1e-4)+1e-4
+betas = torch.linspace(1e-4, 2e-2, num_steps)
 alphas = 1-betas
 alphas_prod = torch.cumprod(alphas, 0)
 alphas_prod_p = torch.cat([torch.tensor([1]).float(), alphas_prod[:-1]], 0)
@@ -38,12 +39,28 @@ else:
 print('using device {device}'.format(device=device))
 
 total_epochs = 0
+
 model = UNet(
         T=num_steps, ch=128, ch_mult=[1, 2, 2, 2], attn=[1],
         num_res_blocks=2, dropout=0.1)
 model=nn.DataParallel(model,device_ids=args.gpus)
-model.to(device)
+# model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+if args.continues:
+    # load model weights
+    model.module.load_state_dict(torch.load(args.model_weights_path))
+    print("loaded weights from {}".format(args.model_weights_path))
+    # load optimizer state and trained epochs
+    training_params=torch.load(args.training_params_path)
+    optimizer.load_state_dict(training_params['opt_state_dict'])
+    total_epochs=training_params['total_epochs']
+    print('total_epochs:',total_epochs)
+else:
+    total_epochs=0
+    print('initializing from scratch')
+
+opt_sche=MultiStepLR(optimizer,args.milestones,gamma=args.gamma,last_epoch=total_epochs-1)
 
 def q_x(x_0, t): # q process , gradually adding noise to image
     noise = torch.randn_like(x_0).to(x_0.device)
@@ -98,6 +115,7 @@ def save_noise_seq(image,num_steps,interval,save_folder): # show the process of 
 def train():
     for i in range(args.epochs):
         print('updating epoch: {}'.format(total_epochs+i))
+        print('current learning rate: ',opt_sche.get_last_lr())
         for idx,(images,labels) in tqdm(enumerate(dataloader)):
             optimizer.zero_grad()
             images = images.to(device)
@@ -106,31 +124,21 @@ def train():
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.)
             optimizer.step()
         
+        opt_sche.step()
         print("loss:",loss)
         with torch.no_grad():
             x_seq = p_sample_loop(model, images[0:1].shape, num_steps, betas, one_minus_alphas_bar_sqrt)
 
         for step in range(1, num_steps//20):
             cur_x = x_seq[step*20].detach().cpu()
-            save_image(cur_x,os.path.join(args.generated_image_folder,f'generated_img_{i}_{step}.jpg'))
+            save_image(cur_x,os.path.join(args.generated_image_folder,f'generated_img_{total_epochs+i}_{step}.jpg'))
 
 
 if __name__ == "__main__":
     if args.save_images:
         if not os.path.exists(args.generated_image_folder):
             os.makedirs(args.generated_image_folder,exist_ok=True)
-    if args.continues:
-        # load model weights
-        model.module.load_state_dict(torch.load(args.model_weights_path))
-        print("loaded weights from {}".format(args.model_weights_path))
-        # load optimizer state and trained epochs
-        training_params=torch.load(args.training_params_path)
-        optimizer.load_state_dict(training_params['opt_state_dict'])
-        total_epochs=training_params['total_epochs']
-        print('total_epochs:',total_epochs)
-    else:
-        total_epochs=0
-        print('initializing from scratch')
+
     # train 
     train()
 

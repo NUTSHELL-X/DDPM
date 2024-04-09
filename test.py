@@ -77,8 +77,9 @@ if __name__=="__main__":
     assert num_steps >= interval
 
     for i in range(img_num):
+        print(f"generating image {i}")
         with torch.no_grad():
             x_seq = p_sample_loop(model, (1,3,h,w), num_steps, betas, one_minus_alphas_bar_sqrt)
         for step in range(1, num_steps//interval):
-            cur_x = x_seq[step*20].detach().cpu()
+            cur_x = x_seq[step*interval].detach().cpu()
             save_image(cur_x,os.path.join(args.generated_image_folder_test,f'generated_img_{i}_{step}.jpg'))

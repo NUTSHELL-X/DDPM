@@ -19,8 +19,6 @@ def config_parser():
     parser.add_argument('--w',type=int) # width of image
     parser.add_argument('--batch_size',type=int) # batch size
     parser.add_argument('--lr',type=float) # learning rate
-    parser.add_argument('--lr_decay',type=bool,default=False) # learning rate decay or not
-    parser.add_argument('--lr_step_size',type=int,default=10) # lr decay frequency
     parser.add_argument('--milestones',type=int,nargs='+') # milestones for learning rate decay
     parser.add_argument('--gamma',type=float) # learning rate decay ratio
     parser.add_argument('--continues',type=bool,default=False) # continues training or not

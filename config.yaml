@@ -4,7 +4,7 @@ model_weights_path: "exp/model.pth"
 training_params_path: "exp/training_params.pt"
 # continue or not (nothing like rightnow means false, if you set it to 
 # anything means true (confusing mechanism maybe from configargparse))
-continues: True
+continues: 
 # folder to save images after each epoch
 generated_image_folder: "exp/generated"
 # folder to save images when testing
@@ -16,7 +16,7 @@ dataset_path: "/PublicData/Dataset/konachan_anime_faces"
 dataset_type: ""
 # adding noise steps (T)
 num_steps: 1000
-epochs: 2
+epochs: 10
 # dtype 
 dtype: "float32"
 # height and width of image
@@ -25,12 +25,11 @@ w: 128
 
 batch_size: 4
 # learning rate
-lr: 1e-4
-# 以下三个功能还没完成，随意填即可
-lr_decay: "True"
-lr_step_size: 20
-milestones: [50,100]
-gamma: 0.9
+lr: 2e-4
+# lr_decay
+
+milestones: [20,40]
+gamma: 0.5
 # used device, set it to cpu if you don't have cuda environment
 device: "cuda"
 # used gpus, list like [0], [1], [1,3], [0,1,2,3] etc. 
