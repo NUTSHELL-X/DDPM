@@ -16,9 +16,9 @@ h=args.h
 w=args.w
 dataloader=create_dataloader((h,w),args.batch_size,args.dataset_type)
 num_steps = args.num_steps
+interval = 20 # save image interval during reverse process
+assert num_steps>=interval
 
-# betas = torch.linspace(-10, 10, num_steps)
-# betas = torch.sigmoid(betas)*(2e-2 - 1e-4)+1e-4
 betas = torch.linspace(1e-4, 2e-2, num_steps)
 alphas = 1-betas
 alphas_prod = torch.cumprod(alphas, 0)
@@ -44,8 +44,8 @@ model = UNet(
         T=num_steps, ch=128, ch_mult=[1, 2, 2, 2], attn=[1],
         num_res_blocks=2, dropout=0.1)
 model=nn.DataParallel(model,device_ids=args.gpus)
-# model.to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 if args.continues:
     # load model weights
@@ -129,9 +129,10 @@ def train():
         with torch.no_grad():
             x_seq = p_sample_loop(model, images[0:1].shape, num_steps, betas, one_minus_alphas_bar_sqrt)
 
-        for step in range(1, num_steps//20):
-            cur_x = x_seq[step*20].detach().cpu()
-            save_image(cur_x,os.path.join(args.generated_image_folder,f'generated_img_{total_epochs+i}_{step}.jpg'))
+        for step in range(0, num_steps//interval):
+            cur_x = x_seq[step*interval].detach().cpu()
+            save_image(cur_x,os.path.join(args.generated_image_folder,f'generated_img_{total_epochs+i}_{step*interval}.jpg'))
+        save_image(x_seq[-1],os.path.join(args.generated_image_folder,f'generated_img_{total_epochs+i}_{num_steps-1}.jpg'))
 
 
 if __name__ == "__main__":

@@ -12,38 +12,6 @@ parser=config_parser()
 args=parser.parse_args()
 ds_folder=args.dataset_path
 
-class MultiFolderDataset(Dataset):
-    def __init__(self,folder,transform):
-        folder=os.path.expanduser(folder) # change "~/" to "/home/user/"
-        self.transform=transform
-        self.images=[]
-        self.class_idxes=[]
-        class_idx=0
-        for class_folder in os.listdir(folder):
-            cur_folder=os.path.join(folder,class_folder)
-            for image_path in os.listdir(cur_folder):
-                image=Image.open(os.path.join(cur_folder,image_path))
-                image=np.array(image)
-                self.images.append(image)
-                self.class_idxes.append(class_idx)
-            class_idx+=1
-        
-        self.images_np_ndarray=np.ndarray(shape=(len(self.images),)+self.images[0].shape)
-        for i in range(0,len(self.images)):
-            self.images_np_ndarray[i] = self.images[i]
-        print(self.images_np_ndarray.shape)
-        
-    def __len__(self):
-        return len(self.images)
-    
-    def __getitem__(self, idx):
-        # image=self.images_np_ndarray[idx]
-        # print('image',type(image),image.shape)
-        image=self.images[idx]
-        class_idx=self.class_idxes[idx]
-        if self.transform:
-            image=self.transform(image=image)['image']
-        return image,class_idx
     
 class SingleFolderDataset(Dataset): #返回一个Dataset的实例，用于读取单个文件夹内的图片
     def __init__(self,folder,transform):
@@ -87,8 +55,6 @@ def create_dataloader(res,batch_size,dataset_type):
     )
     if dataset_type=='image_folder':
         ds=ImageFolder(root=ds_folder,transform=Transforms(transforms))
-    elif dataset_type == 'multi_folder':
-        ds=MultiFolderDataset(folder=ds_folder,transform=transforms)
     else:
         ds=SingleFolderDataset(folder=ds_folder,transform=transforms)
     dl=DataLoader(dataset=ds,batch_size=batch_size,shuffle=True,drop_last=True,pin_memory=True,num_workers=6)

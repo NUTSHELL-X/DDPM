@@ -10,13 +10,13 @@ generated_image_folder: "exp/generated"
 # folder to save images when testing
 generated_image_folder_test: "exp/generated_test"
 # dataset folder
-dataset_path: "/PublicData/Dataset/konachan_anime_faces"
+dataset_path: "data"
 # how your images are organized, "image_folder" refers to torchvision.datasets.ImageFolder class which requires subfolders
 # as class, if images are directly placed under dataset_path, set dataset_type to ""
-dataset_type: ""
+dataset_type: "image_folder"
 # adding noise steps (T)
 num_steps: 1000
-epochs: 10
+epochs: 50
 # dtype 
 dtype: "float32"
 # height and width of image

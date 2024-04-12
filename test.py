@@ -15,8 +15,7 @@ args=parser.parse_args()
 h=args.h
 w=args.w
 num_steps = args.num_steps
-betas = torch.linspace(-10, 10, num_steps)
-betas = torch.sigmoid(betas)*(2e-2 - 1e-4)+1e-4
+betas = torch.linspace(1e-4, 2e-2, num_steps)
 
 alphas = 1-betas
 alphas_prod = torch.cumprod(alphas, 0)
@@ -38,7 +37,6 @@ model = UNet(
         T=num_steps, ch=128, ch_mult=[1, 2, 2, 2], attn=[1],
         num_res_blocks=2, dropout=0.1)
 model=nn.DataParallel(model,device_ids=args.gpus)
-# model.to(device)
 
 
 def p_sample_loop(model, shape, n_steps, betas, one_minus_alphas_bar_sqrt):
@@ -80,6 +78,9 @@ if __name__=="__main__":
         print(f"generating image {i}")
         with torch.no_grad():
             x_seq = p_sample_loop(model, (1,3,h,w), num_steps, betas, one_minus_alphas_bar_sqrt)
-        for step in range(1, num_steps//interval):
+        # save generating process images
+        for step in range(0, num_steps//interval):
             cur_x = x_seq[step*interval].detach().cpu()
-            save_image(cur_x,os.path.join(args.generated_image_folder_test,f'generated_img_{i}_{step}.jpg'))
+            save_image(cur_x,os.path.join(args.generated_image_folder_test,f'generated_img_{i}_{step*interval}.jpg'))
+        # save final generated image
+        save_image(x_seq[-1],os.path.join(args.generated_image_folder_test,f'generated_img_{i}_{num_steps-1}.jpg'))
