@@ -69,8 +69,7 @@ class UpSample(nn.Module):
 
     def forward(self, x, temb):
         _, _, H, W = x.shape
-        x = F.interpolate(
-            x, scale_factor=2, mode='nearest')
+        x = F.interpolate(x, scale_factor=2, mode="nearest")
         x = self.main(x)
         return x
 
@@ -161,7 +160,7 @@ class ResBlock(nn.Module):
 class UNet(nn.Module):
     def __init__(self, T, ch, ch_mult, attn, num_res_blocks, dropout):
         super().__init__()
-        assert all([i < len(ch_mult) for i in attn]), 'attn index out of bound'
+        assert all([i < len(ch_mult) for i in attn]), "attn index out of bound"
         tdim = ch * 4
         self.time_embedding = TimeEmbedding(T, ch, tdim)
 
@@ -172,27 +171,41 @@ class UNet(nn.Module):
         for i, mult in enumerate(ch_mult):
             out_ch = ch * mult
             for _ in range(num_res_blocks):
-                self.downblocks.append(ResBlock(
-                    in_ch=now_ch, out_ch=out_ch, tdim=tdim,
-                    dropout=dropout, attn=(i in attn)))
+                self.downblocks.append(
+                    ResBlock(
+                        in_ch=now_ch,
+                        out_ch=out_ch,
+                        tdim=tdim,
+                        dropout=dropout,
+                        attn=(i in attn),
+                    )
+                )
                 now_ch = out_ch
                 chs.append(now_ch)
             if i != len(ch_mult) - 1:
                 self.downblocks.append(DownSample(now_ch))
                 chs.append(now_ch)
 
-        self.middleblocks = nn.ModuleList([
-            ResBlock(now_ch, now_ch, tdim, dropout, attn=True),
-            ResBlock(now_ch, now_ch, tdim, dropout, attn=False),
-        ])
+        self.middleblocks = nn.ModuleList(
+            [
+                ResBlock(now_ch, now_ch, tdim, dropout, attn=True),
+                ResBlock(now_ch, now_ch, tdim, dropout, attn=False),
+            ]
+        )
 
         self.upblocks = nn.ModuleList()
         for i, mult in reversed(list(enumerate(ch_mult))):
             out_ch = ch * mult
             for _ in range(num_res_blocks + 1):
-                self.upblocks.append(ResBlock(
-                    in_ch=chs.pop() + now_ch, out_ch=out_ch, tdim=tdim,
-                    dropout=dropout, attn=(i in attn)))
+                self.upblocks.append(
+                    ResBlock(
+                        in_ch=chs.pop() + now_ch,
+                        out_ch=out_ch,
+                        tdim=tdim,
+                        dropout=dropout,
+                        attn=(i in attn),
+                    )
+                )
                 now_ch = out_ch
             if i != 0:
                 self.upblocks.append(UpSample(now_ch))
@@ -201,7 +214,7 @@ class UNet(nn.Module):
         self.tail = nn.Sequential(
             nn.GroupNorm(32, now_ch),
             Swish(),
-            nn.Conv2d(now_ch, 3, 3, stride=1, padding=1)
+            nn.Conv2d(now_ch, 3, 3, stride=1, padding=1),
         )
         self.initialize()
 
@@ -234,12 +247,12 @@ class UNet(nn.Module):
         return h
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     batch_size = 8
     model = UNet(
-        T=1000, ch=128, ch_mult=[1, 2, 2, 2], attn=[1],
-        num_res_blocks=2, dropout=0.1)
+        T=1000, ch=128, ch_mult=[1, 2, 2, 2], attn=[1], num_res_blocks=2, dropout=0.1
+    )
     x = torch.randn(batch_size, 3, 32, 32)
-    t = torch.randint(1000, (batch_size, ))
+    t = torch.randint(1000, (batch_size,))
     y = model(x, t)
     print(y.shape)

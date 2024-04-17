@@ -1,5 +1,5 @@
-# DDPM Pytorch Inplement
-A pytorch DDPM inplementation, simple to train and test on your dataset
+# DDPM Pytorch Implement
+A pytorch DDPM implementation, simple to train and test on your dataset
 
 ## Requirement
 python >= 3.10
